@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
   char buffer;
 // Verificamos que los argumentos fueron ingresados correctamente
   if(argc != 5 && argc != 6) {
-    fprintf(stderr, "Usage: %s <init_key> <init_vector> <original_file> <result_file>\nUsage: %s [-d] <init_key> <init_vector> <original_file> <result_file", argv[0], argv[0]);
+    fprintf(stderr, "Encriptación: %s <llave_inicial> <vector_inicialización> <archivo_entrada> <archivo_salida>\nDecriptación: %s [-d] <llave_inicial> <vector_inicialización> <archivo_entrada> <archivo_salida>", argv[0], argv[0]);
     return 1;
   }
   
@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
     decrypt = 1;
   else
     decrypt = 0;
-  if(!decrypt){
+  if(!decrypt){ // Para encriptar
   	// Obtenemos la llave K1
   	ikey = malloc(sizeof(char)*KEYSIZE);
   	sscanf(argv[1], "%s", ikey);
@@ -102,16 +102,16 @@ int main(int argc, char* argv[])
   	}
   	buffer = buffer ^ initvec;
   	
-		// Permutaciones y funciones del plaintext
+		// Permutaciones iniciales del plaintext
 		ip = IP(buffer);
 	  
-	  uint8_t fkOut = fk(ip, k1); // Do the fk process with k1
+	  uint8_t fkOut = fk(ip, k1); // Realiza la función fk con k1
 		
 		uint8_t fksw = swap(fkOut);
-		fksw = fk(fksw, k2); // Do the fk process again with k2
-		ipinv = invip(fksw); // Inverse IP function
+		fksw = fk(fksw, k2); // hace la función fk con k2
+		ipinv = invip(fksw); // Función inversa IP
 		int bytes_writ = fwrite(&ipinv, 1, 1, wfp);
-		if(bytes_writ < 0) syserr("Could not writ to file");
+		if(bytes_writ < 0) syserr("No se pudo escribir en el archivo");
 				 		
 		while(1){
 			bytes_read = fread(&buffer, 1, 1, fp);
@@ -121,17 +121,17 @@ int main(int argc, char* argv[])
 				fclose(wfp);
 				break;
 			}
-			ip = IP(buffer ^ ipinv); // CBC done here
+			ip = IP(buffer ^ ipinv); // Aquí se realiza CBC
 			fkOut = fk(ip, k1);
 			fksw = swap(fkOut);
 			fksw = fk(fksw, k2);
 			ipinv = invip(fksw);
 			bytes_writ = fwrite(&ipinv, 1, 1, wfp);
-			if(bytes_writ < 0) syserr("Could not writ to file");
+			if(bytes_writ < 0) syserr("No se pudo escribir en el archivo");
 		}	
   }
-  else{							//DECRYPT
-  	//Make k1
+  else{	// Decriptación
+  	// Se obtiene K1
   	ikey = malloc(sizeof(char)*KEYSIZE);
   	sscanf(argv[2], "%s", ikey);
   	for (i=0; i < 10; i++){
@@ -139,7 +139,7 @@ int main(int argc, char* argv[])
   	}  	  	
   	char tkey[10];
   	
-  	/// do P10 rearrange
+  	// Realiza la permutación de 10-bits
   	tkey[0] = ikey[2];
   	tkey[1] = ikey[4];
   	tkey[2] = ikey[1];
@@ -150,7 +150,7 @@ int main(int argc, char* argv[])
   	tkey[7] = ikey[8];
   	tkey[8] = ikey[7];
   	tkey[9] = ikey[5];
-  	/// do circular left shift
+  	// Hace un left shift
   	tkey[0] = ikey[4];
   	tkey[1] = ikey[1];
   	tkey[2] = ikey[6];
@@ -165,7 +165,7 @@ int main(int argc, char* argv[])
   	k1 =  (tkey[2] << 6) | (tkey[3] << 4) | (tkey[4] << 2) | (tkey[5]) << 7| 
   				(tkey[6] << 5) | (tkey[7] << 3) | (tkey[8])      | (tkey[9] << 1);
   	  		
-  	// Make k2
+  	// Obtenemos K2
   	tkey[0] = ikey[1];
   	tkey[1] = ikey[6];
   	tkey[2] = ikey[3];
@@ -179,14 +179,14 @@ int main(int argc, char* argv[])
   	k2 =  (tkey[2] << 6) | (tkey[3] << 4) | (tkey[4] << 2) | (tkey[5] << 7)| 
   				(tkey[6] << 5) | (tkey[7] << 3) | (tkey[8])      | (tkey[9] << 1);
   				
-  	//File Ops
+  	// Operaciones en el archivo
   	fp = fopen(argv[4], "r");
   	wfp = fopen(argv[5], "w");
   	fseek(fp, SEEK_SET, 0);
   	fseek(wfp, SEEK_SET, 0);
 		int bytes_read = fread(&buffer, 1, 1, fp);
 		
-		//Set up Initialization Vector
+	// Fijamos el vector de inicialización
   	char * ivec;
   	initvec = 0;
   	ivec = malloc(sizeof(char)*BUFFSIZE);
@@ -199,23 +199,17 @@ int main(int argc, char* argv[])
   	}
   	uint8_t cbcDec = buffer;
   	
-  	// cipher text permutations and functions
+  	// Permutaciones y funciones en el cyphertext
 		ip = IP(buffer);
-		/*
-		printf("IP is: ");
-  	for(i=7; i>=0; i--){
-  		printf("%d", (ip >> i) & 0x01);
-  	}
-  	printf("\n");
-	  */
-	  uint8_t fkOut = fk(ip, k2); // Do the fk process with k1
+		
+	  uint8_t fkOut = fk(ip, k2); // REaliza el proceso fk con k1
 		
 		uint8_t fksw = swap(fkOut);
-		fksw = fk(fksw, k1); // Do the fk process again with k2
-		ipinv = invip(fksw); // Inverse IP function
+		fksw = fk(fksw, k1); // Se realiza de nuevo el proceso fk con K2
+		ipinv = invip(fksw); // Permutación inicial inversa
   	ipinv = ipinv ^ initvec;
 		int bytes_writ = fwrite(&ipinv, 1, 1, wfp);
-		if(bytes_writ < 0) syserr("Could not writ to file");
+		if(bytes_writ < 0) syserr("No se pudo escribir en el archivo");
 		initvec = cbcDec;
 				 		
 		while(1){
@@ -232,14 +226,14 @@ int main(int argc, char* argv[])
 			ipinv = invip(fksw);
 			ipinv = initvec ^ ipinv;
 			bytes_writ = fwrite(&ipinv, 1, 1, wfp);
-			if(bytes_writ < 0) syserr("Could not writ to file");
+			if(bytes_writ < 0) syserr("No se pudo escribir en el archivo");
 			initvec = buffer;
 		}	
   }
   
   return 0;
 }
-
+// Fijamos las cajas S y sus valores
 uint8_t fk(uint8_t ip, uint8_t key){
 	uint8_t ep, epxk1, row, col, tp4, p4;
 	uint8_t s0[4][4] = {
@@ -258,13 +252,7 @@ uint8_t fk(uint8_t ip, uint8_t key){
 			 (ip & 0x02) << 1 | (ip & 0x01) << 1 |
 			 (ip & 0x08) >> 3 | (ip & 0x04) << 3 |
 			 (ip & 0x02) << 3 | (ip & 0x01) << 7 ;
-			 /*
-			 printf("ep is: ");
-  	for(i=7; i>=0; i--){
-  		printf("%d", (ep >> i) & 0x01);
-  	}
-  	printf("\n");
-  	*/
+			
 	epxk1 = ep ^ key;
 	row = (epxk1 & 0x80) >> 6 | (epxk1 & 0x10) >> 4;
 	col = (epxk1 & 0x40) >> 5 | (epxk1 & 0x20) >> 5;
